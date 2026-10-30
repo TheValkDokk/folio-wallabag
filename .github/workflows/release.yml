@@ -141,9 +141,11 @@ jobs:
             | `folio-armeabi-v7a.apk` | old 32-bit devices |
             | `folio-universal.apk` | works everywhere, bigger |
 
-            Build `${{ github.run_number }}`, version `${{ steps.assets.outputs.version }}`, signed with: `${{ steps.key.outputs.signed == 'true' && 'the release keystore' || 'the debug key — uninstall any previous Folio before installing' }}`.
+            Build `${{ github.run_number }}`, version `${{ steps.assets.outputs.version }}`, commit `${{ github.sha }}`.
 
-            Verify with `SHA256SUMS.txt`.
+            Signed with: `${{ steps.key.outputs.signed == 'true' && 'the project release key' || 'the debug key — uninstall any previous Folio before installing' }}`.
+
+            Verify with `SHA256SUMS.txt`. The `v1.0.0` APKs are from before the real-server fixes and were signed with a throwaway runner key — uninstall that build first.
           files: dist/*
 
       # Permanent release for a version tag.

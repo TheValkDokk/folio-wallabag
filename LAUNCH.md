@@ -31,10 +31,17 @@ Who this is for:
 Do not fire everything at once. Each channel has a different half-life, and a
 repo with zero stars converts badly. Sequence over ~3 weeks.
 
+Publish-ready copy for every channel below lives in
+[`docs/posts/`](docs/posts/README.md) — forum, dev.to (two articles), Show HN,
+Reddit, and a social thread, each in its own voice.
+
 ### Day 1 — make the repo legible
 
 - [x] README with screenshots, install path, honest limits
 - [x] LICENSE (GPL-3.0), CONTRIBUTING, CI
+- [x] CI/CD: every push to main builds signed split-per-ABI + universal APKs,
+      publishes them to the rolling `main-latest` release with checksums; `v*`
+      tags cut a permanent release
 - [ ] Record the 20s demo GIF, put it at the top of the README
 - [ ] Add 8–10 "good first issue" tickets (archive pagination, share intent,
       server search, tag editing) so visitors see a live project, not a dump

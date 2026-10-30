@@ -4,6 +4,7 @@
 [wallabag](https://wallabag.org), the self-hosted read-later server. No account
 with us, no recommendations, no telemetry, no next-up carousel.
 
+[![release](https://github.com/TheValkDokk/folio-wallabag/actions/workflows/release.yml/badge.svg)](https://github.com/TheValkDokk/folio-wallabag/actions/workflows/release.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-3.35+-02569B?logo=flutter)](https://flutter.dev)
 [![Platforms](https://img.shields.io/badge/platform-iOS%20%7C%20Android-lightgrey)](#install)
@@ -59,10 +60,23 @@ Folio is not affiliated with the wallabag project. It speaks the public v2 API.
 
 ## Install
 
-**Android** — grab the APK from [Releases](../../releases):
+**Android** — grab an APK from [Releases](../../releases):
+
+| file | use |
+| --- | --- |
+| `folio-arm64-v8a.apk` | almost every phone since ~2017 |
+| `folio-armeabi-v7a.apk` | old 32-bit devices |
+| `folio-universal.apk` | works anywhere, bigger |
+
+`SHA256SUMS.txt` ships with every build. The `main-latest` release is rebuilt
+from `main` on every push; version tags cut a permanent release. Builds are
+signed with a single project key, so they upgrade each other in place.
+
+The `v1.0.0` APKs predate the real-server fixes and were signed with a
+throwaway runner key — uninstall before installing anything newer.
 
 ```bash
-adb install app-arm64-v8a-release.apk
+adb install folio-arm64-v8a.apk
 ```
 
 **iOS** — build from source (no App Store listing yet, see [Roadmap](#roadmap)):
