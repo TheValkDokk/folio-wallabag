@@ -1,13 +1,18 @@
 name: ci
 
+# Fast feedback on pull requests. Pushing to main is handled by release.yml,
+# which runs the same lint plus the signed APK build and rolling release.
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  analyze:
-    name: analyze
+  check:
+    name: analyze + test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,9 +23,10 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
+      - run: flutter test --reporter expanded
 
-  android:
-    name: android apk
+  build:
+    name: apk builds
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +43,7 @@ jobs:
       - run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
         with:
-          name: folio-apk
+          name: folio-apk-pr-${{ github.event.pull_request.number || github.run_number }}
           path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
+          retention-days: 14

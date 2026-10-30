@@ -1,0 +1,157 @@
+name: release
+
+# Every push to main produces installable APKs and publishes them to a rolling
+# "main-latest" pre-release, so there is always one stable download URL:
+#   https://github.com/TheValkDokk/folio-wallabag/releases/tag/main-latest
+# Version tags (v1.2.3) additionally cut a permanent release.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: build + publish apk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.1'
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: test
+        run: flutter test --reporter expanded
+
+      # Optional stable signing key. Without it the build still succeeds but
+      # falls back to the per-runner debug key, which means APKs from two
+      # different CI runs cannot upgrade each other.
+      - name: decode signing key
+        id: key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret — release APK will be debug-signed."
+            exit 0
+          fi
+          mkdir -p android/keystore
+          echo "$KEYSTORE_B64" | base64 --decode > android/keystore/release.jks
+          cat > android/key.properties <<EOF
+          storeFile=keystore/release.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: build apks
+        run: |
+          flutter build apk --release --split-per-abi
+          flutter build apk --release
+          ls -lh build/app/outputs/flutter-apk/*.apk
+
+      - name: collect assets
+        id: assets
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          SHA=${GITHUB_SHA::7}
+          NAME="folio-${VERSION}-${SHA}"
+          OUT=dist
+          mkdir -p "$OUT"
+
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk     "$OUT/folio-arm64-v8a.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk   "$OUT/folio-armeabi-v7a.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk               "$OUT/folio-universal.apk"
+
+          # An APK under ~10 MB means the build silently produced nothing useful.
+          for f in "$OUT"/*.apk; do
+            size=$(stat -c%s "$f")
+            if [ "$size" -lt 10000000 ]; then
+              echo "::error::$f is only $size bytes — build is broken"
+              exit 1
+            fi
+          done
+
+          ( cd "$OUT" && sha256sum *.apk > SHA256SUMS.txt )
+
+          cat > "$OUT/build-info.txt" <<EOF
+          folio $VERSION ($NAME)
+          commit:  $GITHUB_SHA
+          branch:  $GITHUB_REF_NAME
+          built:   $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          runner:  $RUNNER_OS / $GITHUB_RUN_NUMBER
+          flutter: $(flutter --version | head -1)
+          signed:  ${{ steps.key.outputs.signed == 'true' && 'release keystore' || 'debug key (not upgrade-safe)' }}
+          EOF
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          ls -l "$OUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.assets.outputs.name }}
+          path: dist/*
+          if-no-files-found: error
+
+      # Rolling build of main: constant asset names, overwritten each push.
+      - name: publish rolling release
+        if: startsWith(github.ref, 'refs/heads/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: main-latest
+          name: "Folio main (latest build)"
+          prerelease: true
+          make_latest: false
+          overwrite_files: true
+          body: |
+            Automated build of `main` at `${{ github.sha }}`.
+
+            | file | device |
+            | --- | --- |
+            | `folio-arm64-v8a.apk` | almost every phone made since ~2017 |
+            | `folio-armeabi-v7a.apk` | old 32-bit devices |
+            | `folio-universal.apk` | works everywhere, bigger |
+
+            Build `${{ github.run_number }}`, version `${{ steps.assets.outputs.version }}`, signed with: `${{ steps.key.outputs.signed == 'true' && 'the release keystore' || 'the debug key — uninstall any previous Folio before installing' }}`.
+
+            Verify with `SHA256SUMS.txt`.
+          files: dist/*
+
+      # Permanent release for a version tag.
+      - name: publish versioned release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Folio ${{ steps.assets.outputs.version }}
+          generate_release_notes: true
+          make_latest: true
+          files: dist/*
