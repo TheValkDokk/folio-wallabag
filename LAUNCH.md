@@ -107,8 +107,10 @@ no offline-first guarantees).
 
 ### Day 5 — Reddit (one sub per day, disclose authorship in the title or first line)
 
-- `r/selfhosted` — "I built an open-source client for my wallabag server
-  (iOS/Android, Flutter)" — this sub is the best fit by a wide margin.
+- `r/selfhosted` — **not a standalone post.** Rule 6 limits projects younger
+  than 3 months (by first public commit) to the current *New Project Megathread*;
+  rule 5's Wednesday exception does not override it. Comment there, and get most
+  of the value from answering live "Pocket alternative" threads instead.
 - `r/wallabag` — small, high intent; short post, link, offer to fix bugs.
 - `r/androidapps` — read their dev rules first: they require the `[Dev]` tag and
   a free/no-ads statement. APK link, not Play Store.

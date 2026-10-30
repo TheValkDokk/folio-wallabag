@@ -8,7 +8,7 @@ cross-post identical text, it reads as spam and detanks on Reddit.
 | `wallabag-forum.md` | wallabag Discussions → Showcase + Matrix `#wallabag` | day 1 — highest intent |
 | `devto-wallabag-client.md` | dev.to (also fits Hashnode / Medium) | day 1–2 |
 | `show-hn.md` | Hacker News | Tue–Thu, 08:00–10:00 ET |
-| `reddit.md` | r/selfhosted, r/wallabag, r/androidapps | one sub per day |
+| `reddit.md` | r/selfhosted (megathread comment only), r/wallabag, r/androidapps | one sub per day |
 | `devto-offline-sync.md` | dev.to / r/FlutterDev | after the first post lands |
 | `social-thread.md` | Mastodon (Bluesky without tags) | launch day |
 
@@ -23,6 +23,8 @@ wallabag community first, HN second, Reddit after, stores last.
   free/no-ads statement — both are in `reddit.md`.
 - Never ask for upvotes. Reply to every comment for six hours; that is what
   converts, not the submission.
+- Read each sub's rules first. r/selfhosted removes young-project posts outside
+  its New Project Megathread — a removal there costs more than waiting.
 - Link the repo, not the release, on forum/HN posts — a release page hides the
   story and the licence.
 

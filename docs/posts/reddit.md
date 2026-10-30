@@ -1,65 +1,74 @@
-# Reddit posts
+# Reddit
 
 One subreddit per day. Disclose authorship in the title or the first line —
 r/androidapps requires the `[Dev]` tag and a free/no-ads statement.
 
+**Read the rules of each sub before posting.** r/selfhosted does not allow a
+standalone post for this project at all — see below.
+
 ---
 
-## r/selfhosted (best fit by a wide margin)
+## r/selfhosted — comment in the "New Project Megathread", not a new post
 
-**Title**
+Rule 6: *projects younger than 3 months (measured by first public presence, e.g.
+a git commit) may only be posted inside the current "New Project Megathread".*
+Folio's first commit is 29 Oct 2026, so a standalone post gets removed — and a
+removal in a 542k-visitor sub is worse than no post.
 
-```
-I built an open-source client for my wallabag server (iOS/Android, Flutter)
-```
+Rule 2 sets the quality bar that still applies inside the thread: *promoted apps
+must be production ready and have docs*, no ads for hosting/VPS. README,
+`docs/`, CONTRIBUTING, CI and signed APKs in Releases already clear it.
 
-**Body**
+Rule 5's Wednesday exception does **not** rescue this — it is for dashboards /
+companion apps / tools, and rule 6 overrides it for anything under three months.
 
-> I run wallabag for my own reading and got tired of the client situation, so I
-> wrote one: Folio, GPL-3.0, Flutter, one codebase for both platforms.
->
-> What it does:
-> - offline-first — the list, opened articles and every action are local;
->   archive/star/delete queue and replay when you're back online
-> - reader with real typography controls (size, leading, serif/sans,
->   paper/sepia/night), reading position saved per article, TTS
-> - OAuth password grant or paste a token; password used once, never stored
-> - no account with me, no analytics, no telemetry — it only talks to your server
->
-> Public v2 API only, so any 2.4+ instance should work. APKs are in Releases;
-> iOS builds from source (no App Store listing).
->
-> The honest part: I tested it against a mock I wrote myself, which proved
-> nothing. When I finally ran it against wallabag 2.6.15 in Docker, four real
-> bugs appeared — including a PATCH that returned `200 OK` and changed nothing,
-> because star/archive are form params in wallabag's API, not JSON. If you're
-> writing your own client against that API, learn from my afternoon.
->
-> Known gaps: no share extension yet, archive pagination, search is local-only,
-> tag editing is display-only. What would you need before using it daily?
->
-> Repo: https://github.com/TheValkDokk/folio-wallabag
+**Where**: the current pinned New Project Megathread. Threads roll; comment early
+in a fresh one, not on page 20 of an old one.
 
-**First comment (post immediately)**
+**Comment to paste** (comment-shaped, no headers — a thread, not a pitch):
 
-> The mock-server story in more detail, since a few of you will ask:
+> **Folio — an offline-first wallabag reader for iOS and Android (GPL-3.0)**
 >
-> 1. `created_at` is an ISO string (`2026-10-30T04:36:18+0000`), not an epoch
->    int — my parser did `as num?` and the list came back empty.
-> 2. `PATCH /api/entries/{id}.json` wants form-encoded `archive` / `starred`.
->    Send JSON with `is_starred` and you get 200 OK and no change. My test now
->    asserts the entry changed, not that the request succeeded.
-> 3. `openFull()` replaced the store entry instead of filling the caller's, so
->    the reader showed a title and "END".
-> 4. wallabag strips the `h1` from extracted content and stores it separately —
->    render `content` alone and the article has no headline.
+> Self-hosted read-later client. I run wallabag myself and the client situation
+> was the weak link, so I wrote one in Flutter: one codebase, iOS 16+ and
+> Android 8+, public v2 API only.
 >
-> Also: `python3 tool/mock_wallabag.py` ships in the repo and is genuinely handy
-> for UI work. Just don't call it an integration test.
+> - offline-first: the list, opened articles and every write are local; archive/
+>   star/delete queue and replay on the next sync
+> - reader typography (15–30 pt, leading, serif/sans, paper/sepia/night), reading
+>   position saved per article, TTS
+> - OAuth password grant or pasted token; the password is used once, never stored
+> - no telemetry, no server of mine — it only talks to your instance
+> - demo mode, so it's explorable before you have a server
+>
+> APKs in Releases (split-per-ABI + universal, SHA256SUMS published each build).
+> iOS builds from source; no App Store listing.
+>
+> Worth knowing if anyone else writes a client: `PATCH /api/entries/{id}.json`
+> wants form params `archive` / `starred`. Send JSON and it returns 200 OK and
+> changes nothing — silent, forever. Caught it by running against a real 2.6.15
+> container after my own mock had passed everything.
+>
+> Gaps: no share extension yet, archive pagination, local-only search, tag
+> editing is display-only. Feedback on which of those matters most decides what
+> I build next.
+>
+> https://github.com/TheValkDokk/folio-wallabag
+
+### The higher-value play, same sub
+
+The megathread is where posting is *allowed*, not where it converts. Most of the
+value is in comments on existing threads, which rule 2 explicitly permits when
+it's relevant: people asking for a Pocket alternative, "best read-later client",
+"wallabag app recommendations". Answer the question first, mention Folio once,
+and only where it actually fits. Do not paste the block above into those threads.
 
 ---
 
 ## r/wallabag (small, high intent — short)
+
+Check the sub's rules before posting; if it also restricts new projects, use its
+equivalent thread rather than a standalone post.
 
 **Title**
 
