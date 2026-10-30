@@ -22,6 +22,29 @@ Future<void> main() async {
     }
   }
 
+  // Development hook: run the real OAuth password grant against a live
+  // server without tapping through the connect form.
+  //   --dart-define=CONNECT_URL=... --dart-define=CONNECT_CLIENT=...
+  //   --dart-define=CONNECT_SECRET=... --dart-define=CONNECT_USER=...
+  //   --dart-define=CONNECT_PASS=...
+  const connectUrl = String.fromEnvironment('CONNECT_URL');
+  if (connectUrl.isNotEmpty) {
+    try {
+      if (store.connected) await store.disconnect();
+      await store.connectWithPassword(
+        baseUrl: connectUrl,
+        clientId: const String.fromEnvironment('CONNECT_CLIENT'),
+        clientSecret: const String.fromEnvironment('CONNECT_SECRET'),
+        username: const String.fromEnvironment('CONNECT_USER'),
+        password: const String.fromEnvironment('CONNECT_PASS'),
+      );
+      debugPrint('CONNECT ok: ${store.entries.length} entries, '
+          'user=${store.userName}, token=${store.accessToken != null}');
+    } catch (e) {
+      debugPrint('CONNECT failed: $e');
+    }
+  }
+
   runApp(FolioApp(store: store));
 }
 

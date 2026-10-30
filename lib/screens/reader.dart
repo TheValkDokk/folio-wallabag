@@ -203,7 +203,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   String _html() {
-    final body = e.content ?? '<p>${e.excerpt ?? ''}</p>';
+    final body = e.content ?? '<p>${_esc(e.excerpt ?? '')}</p>';
+    // wallabag stores the title separately and strips it from the extracted
+    // content, so the reader has to put it back.
+    final head = body.trimLeft().toLowerCase().startsWith('<h1')
+        ? ''
+        : '''
+<header class="folio-head">
+  <h1>${_esc(e.title)}</h1>
+  <div class="meta">${e.readingTime > 0 ? '${e.readingTime} min read' : ''}</div>
+</header>
+<hr class="lede">
+''';
     final font = s.readerFace == 'sans'
         ? '-apple-system, "Segoe UI", Roboto, sans-serif'
         : 'Georgia, "Iowan Old Style", "Times New Roman", serif';
@@ -253,12 +264,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
   li { margin-bottom: 0.4em; }
   table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
   td, th { border-bottom: 1px solid rgba(127,127,127,0.25); padding: 6px 4px; text-align: left; }
+  .folio-head { margin-bottom: 1.6em; }
+  .folio-head .kicker { font-size: 0.62em; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.7em; }
+  .folio-head h1 { font-size: 1.85em; line-height: 1.14; letter-spacing: -0.015em; margin: 0 0 0.5em; }
+  .folio-head .meta { font-size: 0.72em; color: var(--muted); }
+  hr.lede { border: 0; border-top: 1px solid rgba(127,127,127,0.28); margin: 0 0 1.9em; }
   .standfirst { color: var(--muted); font-size: 1.08em; }
   .byline { color: var(--muted); font-size: 0.76em; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2em; }
   .folio-end { color: var(--muted); text-align: center; font-size: 0.72em; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 3em; }
 </style>
 </head>
 <body>
+$head
 $body
 <div class="folio-end">End</div>
 <script>
@@ -291,6 +308,12 @@ $body
 </html>
 ''';
   }
+
+  String _esc(String v) => v
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;');
 
   String _hex(Color c) =>
       '#${c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';

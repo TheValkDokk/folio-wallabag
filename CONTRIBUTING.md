@@ -23,6 +23,11 @@ Useful debug hooks: `--dart-define=OPEN_ENTRY=101` (open a reader),
 `--dart-define=OPEN_SETTINGS=true` (open settings). Both are compiled out unless
 the define is set.
 
+Before opening a PR that touches `lib/wallabag.dart`, run the live suite against
+a real instance (see "Testing against a real server" in the README). The mock
+server is written from the same assumptions as the client, so it will happily
+agree with a wrong request shape.
+
 ## Rules of the house
 
 - **No telemetry, no analytics, no third-party SDKs.** The only network calls are

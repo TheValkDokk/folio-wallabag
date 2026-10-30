@@ -8,6 +8,45 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// A single wallabag entry, as returned by /api/entries.json.
+/// wallabag is inconsistent across versions: timestamps come back as epoch
+/// seconds on some endpoints and ISO-8601 strings on others, and booleans are
+/// 0/1 ints, "0"/"1" strings, or real bools. Coerce once, here.
+int _epochSeconds(Object? v) {
+  if (v == null) return 0;
+  if (v is num) return v.toInt();
+  final s = v.toString().trim();
+  if (s.isEmpty) return 0;
+  final asInt = int.tryParse(s);
+  if (asInt != null) return asInt;
+  final normalised = s.replaceFirstMapped(
+    RegExp(r'([+-]\d{2})(\d{2})$'),
+    (m) => '${m[1]}:${m[2]}',
+  );
+  final dt = DateTime.tryParse(normalised) ??
+      DateTime.tryParse(normalised.replaceFirst(' ', 'T'));
+  return dt == null ? 0 : dt.millisecondsSinceEpoch ~/ 1000;
+}
+
+bool _flag(Object? v) {
+  if (v == null) return false;
+  if (v is bool) return v;
+  if (v is num) return v != 0;
+  final s = v.toString().toLowerCase();
+  return s == '1' || s == 'true' || s == 'yes';
+}
+
+int _int(Object? v) {
+  if (v == null) return 0;
+  if (v is num) return v.toInt();
+  return int.tryParse(v.toString()) ?? 0;
+}
+
+double _double(Object? v) {
+  if (v == null) return 0;
+  if (v is num) return v.toDouble();
+  return double.tryParse(v.toString()) ?? 0;
+}
+
 class Entry {
   Entry({
     required this.id,
@@ -112,16 +151,21 @@ class Entry {
       previewPicture: (j['preview_picture'] as String?)?.trim().isEmpty == true
           ? null
           : (j['preview_picture'] as String?),
-      readingTime: (j['reading_time'] as num?)?.toInt() ?? 0,
-      createdAt: (j['created_at'] as num?)?.toInt() ?? 0,
-      updatedAt: (j['updated_at'] as num?)?.toInt() ?? 0,
-      archived: j['is_archived'] == true || j['is_archived'] == 1,
-      starred: j['is_starred'] == true || j['is_starred'] == 1,
+      readingTime: _int(j['reading_time']),
+      createdAt: _epochSeconds(j['created_at']),
+      updatedAt: _epochSeconds(j['updated_at']),
+      archived: _flag(j['is_archived']),
+      starred: _flag(j['is_starred']),
       tags: tags,
       language: j['language'] as String?,
-      authors: j['authors']?.toString(),
-      progress: (j['progress'] as num?)?.toDouble() ?? 0,
-      scrollOffset: (j['scroll'] as num?)?.toDouble(),
+      authors: j['authors'] is List
+          ? (j['authors'] as List)
+              .map((a) => a.toString())
+              .where((a) => a.trim().isNotEmpty)
+              .join(', ')
+          : j['authors']?.toString(),
+      progress: _double(j['progress']),
+      scrollOffset: j['scroll'] == null ? null : _double(j['scroll']),
     );
   }
 
@@ -321,7 +365,9 @@ class WallabagApi {
       'perPage': '$perPage',
       'sort': sort,
       'order': order,
-      'detail': 'full',
+      // Lists only need metadata; pulling full content for 30 entries means
+      // megabytes per sync. The reader fetches content on open instead.
+      'detail': 'metadata',
     };
     if (archive != null) q['archive'] = '$archive';
     if (starred != null) q['starred'] = '$starred';
@@ -346,10 +392,20 @@ class WallabagApi {
 
   Future<void> patch(int id, Map<String, dynamic> fields) async {
     await ensureFresh();
+    // wallabag reads PATCH fields from the form body ($request->request->all()).
+    // A JSON body returns 200 and changes nothing — which is worse than an
+    // error, so always send form encoding here.
+    final form = fields.entries
+        .map((e) => '${Uri.encodeQueryComponent(e.key)}='
+            '${Uri.encodeQueryComponent('${e.value}')}')
+        .join('&');
     final r = await http.patch(
       _u('entries/$id.json'),
-      headers: {..._auth, 'Content-Type': 'application/json'},
-      body: jsonEncode(fields),
+      headers: {
+        ..._auth,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: form,
     ).timeout(const Duration(seconds: 20));
     await _json(r, what: 'update');
   }
@@ -804,17 +860,14 @@ class AppStore extends ChangeNotifier {
 
   Future<void> openFull(Entry entry) async {
     if (entry.hasContent || demo) return;
-    try {
-      final fresh = await _api!.entry(entry.id);
-      fresh.progress = entry.progress;
-      fresh.scrollOffset = entry.scrollOffset;
-      entries[fresh.id] = fresh;
-      downloaded.add(fresh.id);
-      _scheduleCacheSave();
-      notifyListeners();
-    } catch (_) {
-      rethrow;
-    }
+    // Fill the entry the caller already holds: replacing the object in the
+    // map would leave the open reader pointing at a content-less copy.
+    final fresh = await _api!.entry(entry.id);
+    entry.content = fresh.content;
+    entry.updatedAt = fresh.updatedAt;
+    downloaded.add(entry.id);
+    _scheduleCacheSave();
+    notifyListeners();
   }
 
   // ---- actions (optimistic + queued) ---------------------------------------

@@ -10,10 +10,16 @@ reader can be exercised without a server.
 """
 import json
 import time
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
 NOW = int(time.time())
+
+
+def iso(epoch):
+    """wallabag returns ISO-8601 strings, not epoch integers."""
+    return datetime.fromtimestamp(epoch, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+0000")
 
 ARTICLES = [
     {
@@ -23,8 +29,8 @@ ARTICLES = [
         "domain_name": "example.org",
         "is_archived": 0,
         "is_starred": 1,
-        "created_at": NOW - 1800,
-        "updated_at": NOW - 1800,
+        "created_at": iso(NOW - 1800),
+        "updated_at": iso(NOW - 1800),
         "reading_time": 7,
         "tags": [{"id": 1, "label": "design", "slug": "design"}],
         "preview_picture": "",
@@ -57,8 +63,8 @@ ARTICLES = [
         "domain_name": "example.org",
         "is_archived": 0,
         "is_starred": 0,
-        "created_at": NOW - 86400,
-        "updated_at": NOW - 86400,
+        "created_at": iso(NOW - 86400),
+        "updated_at": iso(NOW - 86400),
         "reading_time": 5,
         "tags": [{"id": 2, "label": "local-first", "slug": "local-first"}],
         "preview_picture": "",
@@ -82,8 +88,8 @@ ARTICLES = [
         "domain_name": "example.org",
         "is_archived": 1,
         "is_starred": 0,
-        "created_at": NOW - 86400 * 4,
-        "updated_at": NOW - 86400 * 4,
+        "created_at": iso(NOW - 86400 * 4),
+        "updated_at": iso(NOW - 86400 * 4),
         "reading_time": 4,
         "tags": [],
         "preview_picture": "",
@@ -184,8 +190,22 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authed():
             return
         length = int(self.headers.get("Content-Length", 0))
-        self.rfile.read(length)
-        self._json(200, {"ok": True})
+        raw = self.rfile.read(length).decode()
+        fields = parse_qs(raw)
+        entry_id = int(urlparse(self.path).path.split("/")[3].split(".")[0])
+        entry = next((a for a in ARTICLES if a["id"] == entry_id), None)
+        if entry is None:
+            self._json(404, {"error": "not_found"})
+            return
+        # The real API reads archive/starred (snake_case keys are ignored).
+        if "archive" in fields:
+            entry["is_archived"] = int(fields["archive"][0])
+        if "starred" in fields:
+            entry["is_starred"] = int(fields["starred"][0])
+        if "title" in fields:
+            entry["title"] = fields["title"][0]
+        entry["updated_at"] = iso(int(time.time()))
+        self._json(200, entry)
 
     def do_DELETE(self):
         if not self._authed():
