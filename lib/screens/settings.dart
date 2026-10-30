@@ -238,7 +238,7 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 12),
             _Panel(
               children: [
-                _Row(label: 'Folio', value: '1.0.0'),
+                _Row(label: 'Folio', value: '1.0.1'),
                 _divider(c),
                 _Row(label: 'API', value: 'wallabag v2'),
                 _divider(c),
